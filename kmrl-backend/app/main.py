@@ -30,10 +30,12 @@ genai.configure(api_key=GEMINI_KEY)
 
 from .staff import staff_router
 from .notes import notes_router
+from .reports import reports_router
 
 app = FastAPI(title="KMRL AI Backend 🚇")
 app.include_router(staff_router)
 app.include_router(notes_router)
+app.include_router(reports_router)
 
 from fastapi.middleware.cors import CORSMiddleware
 

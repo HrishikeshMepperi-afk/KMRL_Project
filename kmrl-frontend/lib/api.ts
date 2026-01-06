@@ -204,3 +204,55 @@ export async function updateNote(noteId: string, update: Partial<NoteCreate>, us
     if (!res.ok) throw new Error("Failed to update note");
     return res.json();
 }
+
+// ---------------- Reports API ----------------
+
+export interface KPISummary {
+    total_footfall: number;
+    total_revenue: number;
+    incidents_logged: number;
+    staff_present_pct: number;
+}
+
+export interface ChartDataPoint {
+    name: string;
+    value: number;
+    category?: string;
+}
+
+export interface ReportCharts {
+    peak_hour: ChartDataPoint[];
+    revenue_breakdown: ChartDataPoint[];
+    incident_types: ChartDataPoint[];
+}
+
+export interface DetailedRow {
+    id: string;
+    col1: string;
+    col2: string;
+    col3: string;
+    col4: string;
+    col5: string;
+    status: string;
+}
+
+export async function getReportSummary(date: string, station: string, type: string): Promise<KPISummary> {
+    const params = new URLSearchParams({ date, station, report_type: type });
+    const res = await fetch(`${API_URL}/reports/summary?${params.toString()}`);
+    if (!res.ok) throw new Error("Failed to fetch summary");
+    return res.json();
+}
+
+export async function getReportCharts(date: string, station: string, type: string): Promise<ReportCharts> {
+    const params = new URLSearchParams({ date, station, report_type: type });
+    const res = await fetch(`${API_URL}/reports/charts?${params.toString()}`);
+    if (!res.ok) throw new Error("Failed to fetch charts");
+    return res.json();
+}
+
+export async function getReportDetails(date: string, station: string, type: string): Promise<DetailedRow[]> {
+    const params = new URLSearchParams({ date, station, report_type: type });
+    const res = await fetch(`${API_URL}/reports/details?${params.toString()}`);
+    if (!res.ok) throw new Error("Failed to fetch details");
+    return res.json();
+}
