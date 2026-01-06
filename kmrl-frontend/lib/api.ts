@@ -101,3 +101,106 @@ export async function getBatchForecast(data: BatchForecastRequest): Promise<Batc
     if (!res.ok) throw new Error("Failed to fetch batch forecast");
     return res.json();
 }
+
+// ---------------- Notes API ----------------
+
+export interface Comment {
+    id: string;
+    author: string;
+    content: string;
+    timestamp: string;
+}
+
+export interface HistoryEntry {
+    action: string;
+    timestamp: string;
+    details: string;
+}
+
+export interface Note {
+    id: string;
+    category: string;
+    priority: "Normal" | "High" | "Critical";
+    subject: string;
+    description: string;
+    asset_id?: string;
+    attachments: string[];
+    visibility: string;
+    author: string;
+    timestamp: string;
+    status: string;
+    is_escalated: boolean;
+    history: HistoryEntry[];
+    comments: Comment[];
+    acknowledged_by: string[];
+}
+
+export interface NoteCreate {
+    category: string;
+    priority: string;
+    subject: string;
+    description: string;
+    asset_id?: string;
+    visibility: string;
+    author: string;
+}
+
+export async function getNotes(filters?: { category?: string; priority?: string; search?: string; date?: string }): Promise<Note[]> {
+    const params = new URLSearchParams();
+    if (filters?.category && filters.category !== "All") params.append("category", filters.category);
+    if (filters?.priority && filters.priority !== "All") params.append("priority", filters.priority);
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.date) params.append("date", filters.date);
+
+    const res = await fetch(`${API_URL}/notes?${params.toString()}`);
+    if (!res.ok) throw new Error("Failed to fetch notes");
+    return res.json();
+}
+
+export async function createNote(note: NoteCreate): Promise<Note> {
+    const res = await fetch(`${API_URL}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(note),
+    });
+    if (!res.ok) throw new Error("Failed to create note");
+    return res.json();
+}
+
+export async function addComment(noteId: string, author: string, content: string): Promise<Note> {
+    const params = new URLSearchParams({ author, content });
+    const res = await fetch(`${API_URL}/notes/${noteId}/comment?${params.toString()}`, {
+        method: "POST",
+    });
+    if (!res.ok) throw new Error("Failed to add comment");
+    return res.json();
+}
+
+export async function acknowledgeNote(noteId: string, user: string): Promise<Note> {
+    const params = new URLSearchParams({ user });
+    const res = await fetch(`${API_URL}/notes/${noteId}/acknowledge?${params.toString()}`, {
+        method: "POST",
+    });
+    if (!res.ok) throw new Error("Failed to acknowledge note");
+    return res.json();
+}
+
+export async function resolveNote(noteId: string, user: string): Promise<Note> {
+    const params = new URLSearchParams({ user });
+    const res = await fetch(`${API_URL}/notes/${noteId}/resolve?${params.toString()}`, {
+        method: "POST",
+    });
+    if (!res.ok) throw new Error("Failed to resolve note");
+    return res.json();
+}
+
+export async function updateNote(noteId: string, update: Partial<NoteCreate>, user: string): Promise<Note> {
+    const params = new URLSearchParams({ user });
+    const res = await fetch(`${API_URL}/notes/${noteId}?${params.toString()}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(update),
+    });
+    if (!res.ok) throw new Error("Failed to update note");
+    return res.json();
+}
