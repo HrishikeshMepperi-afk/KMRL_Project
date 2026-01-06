@@ -75,6 +75,20 @@ class ScheduleRequest(BaseModel):
     staff_available: Optional[int] = 10
     peak_hours: Optional[Dict[str, float]] = None  # {"08:00-09:00":1.5}
 
+class TrainDetail(BaseModel):
+    id: str
+    status: str # "Available", "Maintenance", "In Service"
+    location: Optional[str] = None
+
+class FleetStatus(BaseModel):
+    availability: float
+    punctuality: float
+    health_alerts: List[str]
+    utilization: float
+    total_fleet: int
+    active_trains: int
+    train_details: List[TrainDetail]
+
 # ---------------- Root ----------------
 @app.get("/")
 def root():
@@ -314,3 +328,38 @@ def schedule_trains(req: ScheduleRequest):
         "total_trains_needed": total_trains_deployed,
         "schedule": schedule_result
     }
+
+@app.get("/fleet", response_model=FleetStatus)
+def get_fleet_status():
+    # Mock data for demonstration
+    total_fleet = 25
+    active_trains = 22
+    availability = round((active_trains / total_fleet) * 100, 1)
+
+    train_details = []
+    for i in range(1, total_fleet + 1):
+        train_id = f"TM-{100+i}"
+        if i == 5:
+             status = "Maintenance"
+             loc = "Aluva Depot"
+        elif i == 12:
+             status = "Maintenance"
+             loc = "Muttom Yard"
+        elif i == 18:
+             status = "Maintenance"
+             loc = "Pettah Terminal"
+        else:
+             status = "In Service" if i % 2 == 0 else "Available"
+             loc = f"Station {chr(65 + (i%5))}" if status == "In Service" else "Depot"
+        
+        train_details.append(TrainDetail(id=train_id, status=status, location=loc))
+    
+    return FleetStatus(
+        availability=availability,
+        punctuality=96.5,
+        health_alerts=["Train 105: HVAC degraded", "Train 112: Door sensor warning"],
+        utilization=78.4,
+        total_fleet=total_fleet,
+        active_trains=active_trains,
+        train_details=train_details
+    )

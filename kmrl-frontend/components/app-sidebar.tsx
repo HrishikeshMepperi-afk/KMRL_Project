@@ -15,6 +15,8 @@ import {
   IconSearch,
 } from "@tabler/icons-react"
 
+import Link from "next/link"
+
 import { NavDocuments } from "@/components/nav-documents"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
@@ -38,7 +40,7 @@ const data = {
   navMain: [
     { title: "Dashboard", url: "/dashboard", icon: IconDashboard },
     { title: "KPIs", url: "/kpis", icon: IconChartBar },
-    { title: "Fleet Status", url: "/fleet-status", icon: IconUsers },
+    { title: "Fleet Status", url: "/fleet", icon: IconUsers },
     { title: "Train Assignment", url: "/train-assignment", icon: IconTrain },
     { title: "Service Schedule", url: "/service-schedule", icon: IconCalendarEvent },
     { title: "Conflict Alerts", url: "/conflict-alerts", icon: IconFileReport },
@@ -67,9 +69,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="/">
+              <Link href="/">
                 <span className="text-base font-semibold">KMRL Control Panel</span>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
