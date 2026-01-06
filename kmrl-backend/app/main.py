@@ -309,7 +309,10 @@ def schedule_trains(req: ScheduleRequest):
             # Create "06:00-07:00" format key
             end_h = int(hour_start.split(':')[0]) + 1
             time_range = f"{hour_start}-{end_h:02d}:00"
-            passengers = int(daily_passengers * demand_share)
+            # Add randomness to curve (0.85 to 1.15)
+            import random
+            random_factor = random.uniform(0.85, 1.15)
+            passengers = int(daily_passengers * demand_share * random_factor)
             
             # Logic: Capacity 800
             trains_needed = ceil(passengers / train_capacity)

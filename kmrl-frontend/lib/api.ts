@@ -45,6 +45,7 @@ export interface ScheduleResponse {
                 string,
                 {
                     trains_assigned: number;
+                    projected_load: number;
                 }
             >;
         }

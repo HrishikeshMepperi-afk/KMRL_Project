@@ -134,7 +134,7 @@ export default function Page() {
     if (stationSchedule) {
       Object.entries(stationSchedule.hourly_schedule).forEach(([range, details]) => {
         const hour = range.split("-")[0]
-        hourlyTotals[hour] = details.trains_assigned * 800
+        hourlyTotals[hour] = details.projected_load
       })
     }
 
