@@ -74,7 +74,7 @@ export default function Page() {
         const req: ScheduleRequest = {
           date: today,
           stations: stationRequests,
-          available_trains: 500,
+          available_trains: undefined, // Let backend use KMRL_CONFIG default
           staff_available: 2000
         }
 

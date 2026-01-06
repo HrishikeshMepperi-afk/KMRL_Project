@@ -18,6 +18,12 @@ GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 WEATHER_KEY = os.getenv("WEATHER_API_KEY")
 HOLIDAY_KEY = os.getenv("HOLIDAY_KEY")
 
+KMRL_CONFIG = {
+    "TOTAL_FLEET": 25,
+    "TRAIN_CAPACITY": 900,
+    "MAINTENANCE_RATIO": 0.1
+}
+
 genai.configure(api_key=GEMINI_KEY)
 
 genai.configure(api_key=GEMINI_KEY)
@@ -237,7 +243,7 @@ def batch_forecast(data: BatchForecastRequest):
 # ---------------- Plan Endpoint ----------------
 @app.post("/plan")
 def plan_train(request: PlanRequest):
-    train_capacity = 1000
+    train_capacity = KMRL_CONFIG["TRAIN_CAPACITY"]
     trains_required = ceil(request.predicted_passengers / train_capacity)
     peak_hours = ["08:00-10:00","17:00-19:00"]
 
@@ -251,7 +257,7 @@ def plan_train(request: PlanRequest):
 
 @app.post("/schedule")
 def schedule_trains(req: ScheduleRequest):
-    train_capacity = 800  # More realistic capacity
+    train_capacity = KMRL_CONFIG["TRAIN_CAPACITY"]
     schedule_result = {}
 
     # ---------------- Demand Profiles ----------------
@@ -332,7 +338,7 @@ def schedule_trains(req: ScheduleRequest):
 @app.get("/fleet", response_model=FleetStatus)
 def get_fleet_status():
     # Mock data for demonstration
-    total_fleet = 25
+    total_fleet = KMRL_CONFIG["TOTAL_FLEET"]
     active_trains = 22
     availability = round((active_trains / total_fleet) * 100, 1)
 
