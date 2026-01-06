@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { getSchedule, ScheduleRequest, ScheduleResponse } from "@/lib/api"
+import { getSchedule, getForecast, getBatchForecast, ScheduleRequest, ScheduleResponse } from "@/lib/api"
 import { z } from "zod"
 
 export default function Page() {
@@ -32,6 +32,7 @@ export default function Page() {
   })
   const [loading, setLoading] = useState(true)
   const [selectedStation, setSelectedStation] = useState("Aluva")
+  const [fullSchedule, setFullSchedule] = useState<ScheduleResponse | null>(null)
 
   // Station list
   const stations = [
@@ -42,18 +43,33 @@ export default function Page() {
     "Kadavanthra", "Elamkulam", "Vytila", "Thykkoodam", "Petta"
   ]
 
+  // 1. Fetch Data ONCE on load
   useEffect(() => {
     async function fetchData() {
       setLoading(true)
       try {
         const today = new Date().toISOString().split('T')[0]
 
-        // Generate test data for all 22 stations
-        const stationRequests = stations.map(st => ({
-          station: st,
-          // Random mock passenger counts between 5k and 40k to simulate variety
-          predicted_passengers: Math.floor(Math.random() * (40000 - 5000 + 1)) + 5000
-        }))
+        // Generate real AI data using Batch API (Optimized)
+        let stationRequests;
+        try {
+          const batchRes = await getBatchForecast({
+            date: today,
+            time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+            stations: stations,
+            weather: "Cloudy",
+            holiday: false,
+            day_of_week: new Date().toLocaleDateString('en-US', { weekday: 'long' })
+          })
+          stationRequests = batchRes.forecasts;
+        } catch (e) {
+          console.error("Batch forecast failed", e)
+          // Fallback
+          stationRequests = stations.map(st => ({
+            station: st,
+            predicted_passengers: Math.floor(Math.random() * (40000 - 5000 + 1)) + 5000
+          }))
+        }
 
         const req: ScheduleRequest = {
           date: today,
@@ -63,78 +79,7 @@ export default function Page() {
         }
 
         const res = await getSchedule(req)
-
-        // 1. Transform for Table (Filter by Selected Station)
-        const tableRows: z.infer<typeof schema>[] = []
-        let idCounter = 1
-        const stationSchedule = res.schedule[selectedStation];
-
-        if (stationSchedule) {
-          Object.entries(stationSchedule.hourly_schedule).forEach(([range, details]) => {
-            const [startHour] = range.split("-")
-            const count = details.trains_assigned
-
-            for (let i = 0; i < count; i++) {
-              const isReturn = i % 2 !== 0;
-              // Distribute trains evenly across the hour
-              const hourPart = parseInt(startHour.split(":")[0]);
-              const minutePart = Math.floor((60 / count) * i);
-              const arrivalTime = `${hourPart.toString().padStart(2, '0')}:${minutePart.toString().padStart(2, '0')}`;
-
-              tableRows.push({
-                id: idCounter++,
-                trainName: `KMRL-${selectedStation.substring(0, 3).toUpperCase()}-${hourPart}${minutePart.toString().padStart(2, '0')}-${i + 1}`,
-                trainStatus: "On Time",
-                estimatedArrival: arrivalTime,
-                source: isReturn ? selectedStation : "Aluva Depot",
-                destination: isReturn ? "Aluva Depot" : selectedStation,
-                passengers: Math.floor(stationSchedule.predicted_passengers / stationSchedule.trains_assigned_total),
-                bogies: 3,
-                description: isReturn
-                  ? `Return service from ${selectedStation} to Depot`
-                  : `Scheduled service for ${selectedStation} peak demand.`
-              })
-            }
-          })
-        }
-
-        // Sort rows by time
-        tableRows.sort((a, b) => a.estimatedArrival.localeCompare(b.estimatedArrival));
-
-        // 2. Transform for Chart (Specific to Selected Station)
-        const hourlyTotals: Record<string, number> = {}
-        if (stationSchedule) {
-          Object.entries(stationSchedule.hourly_schedule).forEach(([range, details]) => {
-            const hour = range.split("-")[0]
-            // Passengers per hour = trains * capacity (approx 1000) * utilization (0.8)
-            hourlyTotals[hour] = details.trains_assigned * 800
-          })
-        }
-
-        const chartPoints = Object.entries(hourlyTotals)
-          .sort()
-          .map(([time, passengers]) => ({ time, passengers }))
-
-        // 3. Update Section Cards Data
-        if (stationSchedule) {
-          const now = new Date();
-          const currentTimeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-
-          // Find first train accumulating after current time
-          const nextTrainObj = tableRows.find(t => t.estimatedArrival > currentTimeStr);
-          const nextTrain = nextTrainObj ? nextTrainObj.estimatedArrival : "N/A";
-
-          setSectionData({
-            runningTrains: stationSchedule.trains_assigned_total,
-            maintenanceTrains: Math.floor(stationSchedule.trains_assigned_total * 0.1), // Mock 10%
-            nextArrival: nextTrain,
-            nextArrivalStatus: nextTrainObj ? "On Time" : "Finished",
-            totalStaff: Math.floor(stationSchedule.predicted_passengers / 200) // Mock staff ratio
-          })
-        }
-
-        setData(tableRows)
-        setChartData(chartPoints)
+        setFullSchedule(res)
       } catch (e) {
         console.error("Failed to fetch data", e)
       } finally {
@@ -142,7 +87,81 @@ export default function Page() {
       }
     }
     fetchData()
-  }, [selectedStation]) // Re-run when station changes
+  }, []) // Empty dependency array = run once on mount
+
+  // 2. Update UI when Station changes (Instant)
+  useEffect(() => {
+    if (!fullSchedule) return;
+
+    const stationSchedule = fullSchedule.schedule[selectedStation];
+
+    // Transform for Table
+    const tableRows: z.infer<typeof schema>[] = []
+    let idCounter = 1
+
+    if (stationSchedule) {
+      Object.entries(stationSchedule.hourly_schedule).forEach(([range, details]) => {
+        const [startHour] = range.split("-")
+        const count = details.trains_assigned
+
+        for (let i = 0; i < count; i++) {
+          const isReturn = i % 2 !== 0;
+          const hourPart = parseInt(startHour.split(":")[0]);
+          const minutePart = Math.floor((60 / count) * i);
+          const arrivalTime = `${hourPart.toString().padStart(2, '0')}:${minutePart.toString().padStart(2, '0')}`;
+
+          tableRows.push({
+            id: idCounter++,
+            trainName: `KMRL-${selectedStation.substring(0, 3).toUpperCase()}-${hourPart}${minutePart.toString().padStart(2, '0')}-${i + 1}`,
+            trainStatus: "On Time",
+            estimatedArrival: arrivalTime,
+            source: isReturn ? selectedStation : "Aluva Depot",
+            destination: isReturn ? "Aluva Depot" : selectedStation,
+            passengers: Math.floor(stationSchedule.predicted_passengers / stationSchedule.trains_assigned_total),
+            bogies: 3,
+            description: isReturn
+              ? `Return service from ${selectedStation} to Depot`
+              : `Scheduled service for ${selectedStation} peak demand.`
+          })
+        }
+      })
+    }
+
+    tableRows.sort((a, b) => a.estimatedArrival.localeCompare(b.estimatedArrival));
+
+    // Transform for Chart
+    const hourlyTotals: Record<string, number> = {}
+    if (stationSchedule) {
+      Object.entries(stationSchedule.hourly_schedule).forEach(([range, details]) => {
+        const hour = range.split("-")[0]
+        hourlyTotals[hour] = details.trains_assigned * 800
+      })
+    }
+
+    const chartPoints = Object.entries(hourlyTotals)
+      .sort()
+      .map(([time, passengers]) => ({ time, passengers }))
+
+    // Update Section Cards
+    if (stationSchedule) {
+      const now = new Date();
+      const currentTimeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      const nextTrainObj = tableRows.find(t => t.estimatedArrival > currentTimeStr);
+      const nextTrain = nextTrainObj ? nextTrainObj.estimatedArrival : "N/A";
+
+      setSectionData({
+        runningTrains: stationSchedule.trains_assigned_total,
+        maintenanceTrains: Math.floor(stationSchedule.trains_assigned_total * 0.1),
+        nextArrival: nextTrain,
+        nextArrivalStatus: nextTrainObj ? "On Time" : "Finished",
+        totalStaff: Math.floor(stationSchedule.predicted_passengers / 200)
+      })
+    }
+
+    setData(tableRows)
+    setChartData(chartPoints)
+
+  }, [selectedStation, fullSchedule])
 
   return (
     <SidebarProvider

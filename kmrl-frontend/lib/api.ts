@@ -72,3 +72,31 @@ export async function getSchedule(data: ScheduleRequest): Promise<ScheduleRespon
     if (!res.ok) throw new Error("Failed to fetch schedule");
     return res.json();
 }
+
+export interface BatchForecastRequest {
+    date: string;
+    time: string;
+    stations: string[];
+    weather?: string;
+    holiday?: boolean;
+    day_of_week?: string;
+}
+
+export interface BatchForecastResponse {
+    date: string;
+    time: string;
+    forecasts: {
+        station: string;
+        predicted_passengers: number;
+    }[];
+}
+
+export async function getBatchForecast(data: BatchForecastRequest): Promise<BatchForecastResponse> {
+    const res = await fetch(`${API_URL}/forecast/batch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to fetch batch forecast");
+    return res.json();
+}
