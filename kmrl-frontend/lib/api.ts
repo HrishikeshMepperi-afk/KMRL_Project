@@ -111,6 +111,21 @@ export interface TrainDetail {
     ridership_load: number;
 }
 
+export interface TripRequest {
+    id: string;
+    route_name: string;
+    start_time: string;
+    origin_station: string;
+}
+
+export interface AssignmentResult {
+    trip_id: string;
+    train_id: string;
+    train_km_run: number;
+    is_peak_match: boolean;
+    match_reason: string;
+}
+
 export interface FleetStatus {
     availability: number;
     punctuality: number;
@@ -124,6 +139,18 @@ export interface FleetStatus {
 export async function getFleetStatus(): Promise<FleetStatus> {
     const res = await fetch(`${API_URL}/fleet`);
     if (!res.ok) throw new Error("Failed to fetch fleet status");
+    return res.json();
+}
+
+export async function assignTrains(trips: TripRequest[]): Promise<AssignmentResult[]> {
+    const res = await fetch(`${API_URL}/assign-trains`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ trips }),
+    });
+    if (!res.ok) throw new Error("Failed to assign trains");
     return res.json();
 }
 
