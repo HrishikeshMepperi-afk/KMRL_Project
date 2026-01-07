@@ -44,7 +44,6 @@ const data = {
     { title: "Train Assignment", url: "/train-assignment", icon: IconTrain },
     { title: "Service Schedule", url: "/service-schedule", icon: IconCalendarEvent },
     { title: "Conflict Alerts", url: "/conflict-alerts", icon: IconFileReport },
-    { title: "Optimisation", url: "/optimisation", icon: IconFileText },
     { title: "Operations Notes", url: "/operations-notes", icon: IconFileText },
     { title: "Staff Management", url: "/staff-management", icon: IconUsers },
   ],

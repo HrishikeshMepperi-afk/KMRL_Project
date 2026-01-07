@@ -281,3 +281,42 @@ export async function getReportDetails(date: string, station: string, type: stri
     if (!res.ok) throw new Error("Failed to fetch details");
     return res.json();
 }
+
+// ---------------- Conflicts API ----------------
+
+export interface Conflict {
+    id: string;
+    category: string;
+    title: string;
+    description: string;
+    severity: "Critical" | "Warning" | "Info";
+    entities: string[];
+    status: "Active" | "Resolved" | "Overridden";
+    override_comment?: string;
+}
+
+export async function runConflictCheck(): Promise<Conflict[]> {
+    const res = await fetch(`${API_URL}/conflicts/run-check`, { method: 'POST' });
+    if (!res.ok) throw new Error("Failed to run conflict check");
+    return res.json();
+}
+
+export async function getConflicts(): Promise<Conflict[]> {
+    const res = await fetch(`${API_URL}/conflicts/`);
+    if (!res.ok) throw new Error("Failed to fetch conflicts");
+    return res.json();
+}
+
+export async function resolveConflict(id: string): Promise<void> {
+    const res = await fetch(`${API_URL}/conflicts/${id}/resolve`, { method: 'POST' });
+    if (!res.ok) throw new Error("Failed to resolve conflict");
+}
+
+export async function overrideConflict(id: string, comment: string): Promise<void> {
+    const res = await fetch(`${API_URL}/conflicts/${id}/override`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment })
+    });
+    if (!res.ok) throw new Error("Failed to override conflict");
+}
