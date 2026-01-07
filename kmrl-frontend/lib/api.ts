@@ -102,6 +102,31 @@ export async function getBatchForecast(data: BatchForecastRequest): Promise<Batc
     return res.json();
 }
 
+export interface TrainDetail {
+    id: string;
+    status: string;
+    location: string;
+    delay_minutes: number;
+    km_run_today: number;
+    ridership_load: number;
+}
+
+export interface FleetStatus {
+    availability: number;
+    punctuality: number;
+    health_alerts: string[];
+    utilization: number;
+    total_fleet: number;
+    active_trains: number;
+    train_details: TrainDetail[];
+}
+
+export async function getFleetStatus(): Promise<FleetStatus> {
+    const res = await fetch(`${API_URL}/fleet`);
+    if (!res.ok) throw new Error("Failed to fetch fleet status");
+    return res.json();
+}
+
 // ---------------- Notes API ----------------
 
 export interface Comment {

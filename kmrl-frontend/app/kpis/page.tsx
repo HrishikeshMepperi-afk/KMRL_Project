@@ -15,10 +15,33 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { getSchedule, ScheduleRequest } from "@/lib/api"
+import {
+    getSchedule,
+    ScheduleRequest,
+    getFleetStatus,
+    FleetStatus,
+    TrainDetail
+} from "@/lib/api"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
 
 export default function KPIDashboard() {
     const [loading, setLoading] = useState(true)
+    const [fleetStatus, setFleetStatus] = useState<FleetStatus | null>(null)
     const [metrics, setMetrics] = useState({
         fareRevenue: 0,
         nonFareRevenue: 0,
@@ -46,6 +69,8 @@ export default function KPIDashboard() {
                 }
 
                 const res = await getSchedule(req)
+                const fleetRes = await getFleetStatus()
+                setFleetStatus(fleetRes)
 
                 let totalPassengers = 0
                 let totalTrains = 0
@@ -78,7 +103,8 @@ export default function KPIDashboard() {
                 const costPerPassenger = totalCost / totalPassengers
 
                 // 4. Punctuality
-                const punctuality = (onTimeTrains / totalTrains) * 100
+                // Use real fleet punctuality if available, else calc
+                const punctuality = fleetRes ? fleetRes.punctuality : (onTimeTrains / totalTrains) * 100
 
                 setMetrics({
                     fareRevenue,
@@ -124,15 +150,6 @@ export default function KPIDashboard() {
             // Shadcn cards usually emphasize the trend direction.
             subtext: "Operational Efficiency"
         },
-        {
-            title: "Punctuality",
-            value: `${metrics.punctuality.toFixed(1)}%`,
-            description: "Trains within 5 mins of schedule",
-            icon: Clock,
-            trend: "+1.2%",
-            trendUp: true,
-            subtext: "Target: 99.0%"
-        }
     ]
 
     return (
@@ -150,34 +167,38 @@ export default function KPIDashboard() {
                 <div className="flex flex-1 flex-col gap-4 p-4 lg:p-6">
                     <h2 className="text-2xl font-bold tracking-tight">Key Performance Indicators</h2>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        {kpis.map((kpi) => (
-                            <Card key={kpi.title}>
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">
-                                        {kpi.title}
-                                    </CardTitle>
-                                    <kpi.icon className="h-4 w-4 text-muted-foreground" />
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-2xl font-bold">{loading ? "..." : kpi.value}</div>
-                                    <p className="text-xs text-muted-foreground">
-                                        {kpi.trendUp ? (
-                                            <span className="text-green-500 flex items-center gap-1 inline-flex">
-                                                <TrendingUp className="h-3 w-3" /> {kpi.trend}
-                                            </span>
-                                        ) : (
-                                            <span className="text-green-500 flex items-center gap-1 inline-flex">
-                                                <TrendingDown className="h-3 w-3" /> {kpi.trend}
-                                            </span>
-                                        )}
-                                        <span className="ml-2">{kpi.subtext}</span>
-                                    </p>
-                                    <div className="mt-2 text-xs text-muted-foreground border-t pt-2">
-                                        {kpi.description}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
+                        {kpis.map((kpi) => {
+
+
+                            return (
+                                <Card key={kpi.title}>
+                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                        <CardTitle className="text-sm font-medium">
+                                            {kpi.title}
+                                        </CardTitle>
+                                        <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="text-2xl font-bold">{loading ? "..." : kpi.value}</div>
+                                        <p className="text-xs text-muted-foreground">
+                                            {kpi.trendUp ? (
+                                                <span className="text-green-500 flex items-center gap-1 inline-flex">
+                                                    <TrendingUp className="h-3 w-3" /> {kpi.trend}
+                                                </span>
+                                            ) : (
+                                                <span className="text-green-500 flex items-center gap-1 inline-flex">
+                                                    <TrendingDown className="h-3 w-3" /> {kpi.trend}
+                                                </span>
+                                            )}
+                                            <span className="ml-2">{kpi.subtext}</span>
+                                        </p>
+                                        <div className="mt-2 text-xs text-muted-foreground border-t pt-2">
+                                            {kpi.description}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )
+                        })}
                     </div>
 
                     {/* Context Section */}

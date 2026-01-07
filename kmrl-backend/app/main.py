@@ -1,3 +1,4 @@
+
 import os
 import json
 from math import ceil
@@ -8,6 +9,8 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 import requests
 import urllib3
+from datetime import datetime, timedelta
+import random
 
 # ---------------- Suppress LibreSSL warning ----------------
 urllib3.disable_warnings(urllib3.exceptions.NotOpenSSLWarning)
@@ -89,6 +92,10 @@ class TrainDetail(BaseModel):
     id: str
     status: str # "Available", "Maintenance", "In Service"
     location: Optional[str] = None
+    location: Optional[str] = None
+    delay_minutes: int = 0
+    km_run_today: float = 0.0
+    ridership_load: float = 0.0 # Percentage 0-100
 
 class FleetStatus(BaseModel):
     availability: float
@@ -350,8 +357,13 @@ def get_fleet_status():
     availability = round((active_trains / total_fleet) * 100, 1)
 
     train_details = []
+    delayed_trains = 0
+    in_service_count = 0
+
     for i in range(1, total_fleet + 1):
         train_id = f"TM-{100+i}"
+        delay = 0
+
         if i == 5:
              status = "Maintenance"
              loc = "Aluva Depot"
@@ -365,11 +377,87 @@ def get_fleet_status():
              status = "In Service" if i % 2 == 0 else "Available"
              loc = f"Station {chr(65 + (i%5))}" if status == "In Service" else "Depot"
         
-        train_details.append(TrainDetail(id=train_id, status=status, location=loc))
+        if status == "In Service":
+            in_service_count += 1
+            # Mock some delays
+            if random.random() < 0.15: # 15% chance of delay
+                delay = random.randint(2, 12)
+                delayed_trains += 1
+            
+            # --- Realistic Utilization Logic ---
+            now = datetime.now()
+            start_of_service = now.replace(hour=6, minute=0, second=0, microsecond=0)
+            
+            # 1. KM Run Calculation
+            if now < start_of_service:
+                km_run = 0.0
+            else:
+                elapsed_hours = (now - start_of_service).total_seconds() / 3600
+                avg_speed = 33.0 # km/h (Commercial speed including stops)
+                km_run = elapsed_hours * avg_speed
+                # Add randomness: +/- 15% per train to simulate different start times/routes
+                km_run *= random.uniform(0.85, 1.15)
+                km_run = round(max(0.0, km_run), 1)
+
+            # 2. Ridership Load Calculation
+            current_hour = now.hour
+            
+            # Base Load Curve (Time Factor)
+            if 8 <= current_hour < 11: # Morning Peak
+                base_load = random.uniform(80, 90)
+            elif 17 <= current_hour < 20: # Evening Peak
+                base_load = random.uniform(85, 95)
+            elif 11 <= current_hour < 17: # Mid-Day
+                base_load = random.uniform(40, 60)
+            else: # Early Morning / Late Night
+                base_load = random.uniform(10, 30)
+
+            # Station Tier Multiplier (Location Factor)
+            # Tier 1
+            if loc in ["Aluva", "Edapally", "M.G. Road", "Maharaja's College", "Vytila"]:
+                tier_multiplier = 1.2
+            # Tier 2
+            elif loc in ["Kalamassery", "Kaloor", "JLN Stadium", "Palarivattom", "Ernakulam South", "Petta"]:
+                tier_multiplier = 1.0
+            # Tier 3 (Others)
+            else:
+                tier_multiplier = 0.7
+            
+            ridership_load = base_load * tier_multiplier
+            
+            # Random fluctuation per train
+            ridership_load *= random.uniform(0.9, 1.1)
+            
+            # Clamp to 0-100 (occasionally can go over 100% for 'Crush Load', let's cap at 120%)
+            ridership_load = round(min(120.0, max(0.0, ridership_load)), 1)
+            
+        else:
+            # "Available" or "Maintenance" Status
+            ridership_load = 0.0
+            km_run = 0.0
+            
+            # Simulate Morning Shift Completion for "Available" trains
+            # If a train is Available, it might have finished a shift earlier in the day
+            if status == "Available" and random.random() < 0.70: # 70% chance it ran earlier
+                 # Assign a random accumulated distance (e.g. 100km to 350km) representing a finished shift
+                 km_run = round(random.uniform(100.0, 350.0), 1)
+
+        train_details.append(TrainDetail(
+            id=train_id, 
+            status=status, 
+            location=loc, 
+            delay_minutes=delay,
+            km_run_today=km_run,
+            ridership_load=ridership_load
+        ))
     
+    calculated_punctuality = 100.0
+    if in_service_count > 0:
+        calculated_punctuality = ((in_service_count - delayed_trains) / in_service_count) * 100
+
     return FleetStatus(
         availability=availability,
-        punctuality=96.5,
+        punctuality=round(calculated_punctuality, 1),
         health_alerts=["Train 105: HVAC degraded", "Train 112: Door sensor warning"],
         utilization=78.4,
         total_fleet=total_fleet,
