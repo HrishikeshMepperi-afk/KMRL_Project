@@ -291,8 +291,10 @@ export interface Conflict {
     description: string;
     severity: "Critical" | "Warning" | "Info";
     entities: string[];
-    status: "Active" | "Resolved" | "Overridden";
+    status: "Active" | "Resolved" | "Overridden" | "Auto-Fixed";
     override_comment?: string;
+    can_auto_fix?: boolean;
+    fix_description?: string;
 }
 
 export async function runConflictCheck(): Promise<Conflict[]> {
@@ -319,4 +321,9 @@ export async function overrideConflict(id: string, comment: string): Promise<voi
         body: JSON.stringify({ comment })
     });
     if (!res.ok) throw new Error("Failed to override conflict");
+}
+
+export async function autoFixConflict(id: string): Promise<void> {
+    const res = await fetch(`${API_URL}/conflicts/${id}/auto-fix`, { method: 'POST' });
+    if (!res.ok) throw new Error("Failed to auto-fix conflict");
 }

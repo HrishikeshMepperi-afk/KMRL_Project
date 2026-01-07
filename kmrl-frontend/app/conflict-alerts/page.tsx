@@ -27,9 +27,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
-    AlertTriangle, ShieldAlert, AlertCircle, Info, CheckCircle, Play, Filter, ShieldCheck
+    AlertTriangle, ShieldAlert, AlertCircle, Info, CheckCircle, Play, Filter, ShieldCheck, Zap
 } from "lucide-react"
-import { runConflictCheck, getConflicts, resolveConflict, overrideConflict, Conflict } from "@/lib/api"
+import { runConflictCheck, getConflicts, resolveConflict, overrideConflict, autoFixConflict, Conflict } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 export default function ConflictAlertsPage() {
@@ -69,6 +69,15 @@ export default function ConflictAlertsPage() {
     const handleResolve = async (id: string) => {
         try {
             await resolveConflict(id)
+            fetchConflicts()
+        } catch (e) {
+            console.error(e)
+        }
+    }
+
+    const handleAutoFix = async (id: string) => {
+        try {
+            await autoFixConflict(id)
             fetchConflicts()
         } catch (e) {
             console.error(e)
@@ -191,6 +200,13 @@ export default function ConflictAlertsPage() {
                                                 ))}
                                             </div>
                                         </div>
+
+                                        {conflict.can_auto_fix && (
+                                            <div className="flex items-center gap-2 p-2 rounded-md bg-green-50 border border-green-100 text-green-800 text-sm">
+                                                <Zap className="h-4 w-4 fill-green-600 text-green-600" />
+                                                <span className="font-semibold">Suggested Fix:</span> {conflict.fix_description}
+                                            </div>
+                                        )}
                                     </CardContent>
                                     <CardFooter className="flex justify-end gap-3 pt-2 border-t bg-muted/10">
                                         <Button
@@ -201,6 +217,16 @@ export default function ConflictAlertsPage() {
                                         >
                                             Override
                                         </Button>
+                                        {conflict.can_auto_fix && (
+                                            <Button
+                                                variant="default"
+                                                size="sm"
+                                                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                                onClick={() => handleAutoFix(conflict.id)}
+                                            >
+                                                <Zap className="h-3.5 w-3.5 mr-2 fill-current" /> Auto-Fix
+                                            </Button>
+                                        )}
                                         <Button
                                             variant="default"
                                             size="sm"

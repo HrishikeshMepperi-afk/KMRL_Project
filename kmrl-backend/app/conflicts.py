@@ -14,8 +14,10 @@ class Conflict(BaseModel):
     description: str
     severity: str # "Critical", "Warning", "Info"
     entities: List[str] # ["Staff: John Doe", "Shift: Morning"]
-    status: str = "Active" # "Active", "Resolved", "Overridden"
+    status: str = "Active" # "Active", "Resolved", "Overridden", "Auto-Fixed"
     override_comment: Optional[str] = None
+    can_auto_fix: bool = False
+    fix_description: Optional[str] = None
 
 class OverrideRequest(BaseModel):
     comment: str
@@ -41,7 +43,9 @@ def run_conflict_check():
         description="Staff member is assigned to two different stations simultaneously.",
         severity="Critical",
         entities=["Staff: S. Prince", "Station: Aluva (Shift A)", "Station: Edappally (Shift A)"],
-        status="Active"
+        status="Active",
+        can_auto_fix=True,
+        fix_description="Auto-reassign Edappally Shift to Backup Staff"
     ))
 
     # 2. Staffing: 12-Hour Rule Violation
@@ -52,7 +56,9 @@ def run_conflict_check():
         description="Insufficient rest gap between Night Shift and Morning Shift.",
         severity="Warning",
         entities=["Staff: M. Rahul", "Shift: Night (Yesterday)", "Shift: Morning (Today)"],
-        status="Active"
+        status="Active",
+        can_auto_fix=True,
+        fix_description="Move Morning Shift to Afternoon Shift"
     ))
     
     # 3. Staffing: Leave Overlap
@@ -63,7 +69,9 @@ def run_conflict_check():
         description="Staff rostered on a day with approved Annual Leave.",
         severity="Warning",
         entities=["Staff: A. Priya", "Leave: Approved (Jan 7)", "Roster: Shift B"],
-        status="Active"
+        status="Active",
+        can_auto_fix=True,
+        fix_description="Remove from Roster and Alert Manager"
     ))
 
     # 4. Staffing: License Expired
@@ -74,7 +82,8 @@ def run_conflict_check():
         description="Station Controller assigned without valid safety certification.",
         severity="Critical",
         entities=["Staff: K. Vikram", "Role: Station Controller", "Cert: Expired Dec 31"],
-        status="Active"
+        status="Active",
+        can_auto_fix=False # Requires manual recertification
     ))
 
     # 5. Operational: Track Possession
@@ -85,7 +94,8 @@ def run_conflict_check():
         description="Train scheduled on track section currently under power block.",
         severity="Critical",
         entities=["Track: Section 4 (Palarivattom)", "Train: Service #405", "Maintenance: Civil Team"],
-        status="Active"
+        status="Active",
+        can_auto_fix=False # Requires complex scheduling decision
     ))
     
     # 6. Operational: Maintenance Overlap
@@ -96,7 +106,9 @@ def run_conflict_check():
         description="Train designated for service is marked for depot maintenance.",
         severity="Warning",
         entities=["Asset: Train Set #08", "Schedule: 14:00 Service", "Depot: Wheel Turning"],
-        status="Active"
+        status="Active",
+        can_auto_fix=True,
+        fix_description="Swap with Reserve Train Set #12"
     ))
     
      # 7. Asset: Counter Mismatch
@@ -107,7 +119,8 @@ def run_conflict_check():
         description="Roster requires 3 counters, but only 2 machines are functional.",
         severity="Info",
         entities=["Station: MG Road", "Roster: 3 Staff", "Asset Log: 2 Working POMs"],
-        status="Active"
+        status="Active",
+        can_auto_fix=False
     ))
 
     CONFLICTS_DB.extend(new_conflicts)
@@ -132,4 +145,18 @@ def override_conflict(conflict_id: str, req: OverrideRequest):
             c.status = "Overridden"
             c.override_comment = req.comment
             return {"message": "Conflict overridden"}
+    raise HTTPException(status_code=404, detail="Conflict not found")
+
+@conflicts_router.post("/{conflict_id}/auto-fix")
+def auto_fix_conflict(conflict_id: str):
+    for c in CONFLICTS_DB:
+        if c.id == conflict_id:
+            if not c.can_auto_fix:
+                raise HTTPException(status_code=400, detail="This conflict cannot be auto-fixed.")
+            
+            c.status = "Auto-Fixed"
+            # In a real app, this would actually modify the Roster/Schedule tables.
+            # Here we just change the status and maybe update description to show what happened.
+            c.description += f" [AUTO-FIXED: {c.fix_description}]"
+            return {"message": f"Conflict auto-fixed: {c.fix_description}"}
     raise HTTPException(status_code=404, detail="Conflict not found")
