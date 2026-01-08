@@ -42,7 +42,7 @@ const data = {
     { title: "KPIs", url: "/kpis", icon: IconChartBar },
     { title: "Fleet Status", url: "/fleet", icon: IconUsers },
     { title: "Train Assignment", url: "/train-assignment", icon: IconTrain },
-    { title: "Service Schedule", url: "/service-schedule", icon: IconCalendarEvent },
+    { title: "Service Schedule", url: "/schedule", icon: IconCalendarEvent },
     { title: "Conflict Alerts", url: "/conflict-alerts", icon: IconFileReport },
     { title: "Operations Notes", url: "/operations-notes", icon: IconFileText },
     { title: "Staff Management", url: "/staff-management", icon: IconUsers },

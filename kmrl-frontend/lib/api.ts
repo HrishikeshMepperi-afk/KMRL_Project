@@ -143,7 +143,7 @@ export async function getFleetStatus(): Promise<FleetStatus> {
 }
 
 export async function assignTrains(trips: TripRequest[]): Promise<AssignmentResult[]> {
-    const res = await fetch(`${API_URL}/assign-trains`, {
+    const res = await fetch(`${API_URL}/fleet/assign-trains`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -353,4 +353,92 @@ export async function overrideConflict(id: string, comment: string): Promise<voi
 export async function autoFixConflict(id: string): Promise<void> {
     const res = await fetch(`${API_URL}/conflicts/${id}/auto-fix`, { method: 'POST' });
     if (!res.ok) throw new Error("Failed to auto-fix conflict");
+}
+
+// --- Schedule APIs ---
+
+export interface Pilot {
+    id: string;
+    name: string;
+    status: "Available" | "On Duty" | "On Leave";
+}
+
+export interface TrainSet {
+    id: string;
+    name: string;
+    status: "Operational" | "Maintenance" | "Cleaning";
+}
+
+export interface Trip {
+    id: string;
+    trip_id: string;
+    route: string;
+    train_set_id?: string; // ID
+    pilot_id?: string; // ID
+    departure_time: string;
+    arrival_time: string;
+    frequency: string;
+    status: "Scheduled" | "Running" | "Completed" | "Cancelled" | "Delayed";
+    delay_minutes: number;
+    platform: string;
+}
+
+export interface TripUpdate {
+    departure_time?: string;
+    delay_minutes?: number;
+    status?: string;
+    pilot_id?: string;
+    train_set_id?: string;
+    platform?: string;
+    cancellation_reason?: string;
+}
+
+export async function getServiceSchedule(): Promise<Trip[]> {
+    const res = await fetch(`${API_URL}/schedule/`);
+    if (!res.ok) throw new Error("Failed to fetch schedule");
+    return res.json();
+}
+
+export async function addTrip(trip: Partial<Trip>): Promise<Trip> {
+    const res = await fetch(`${API_URL}/schedule/trip`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(trip)
+    });
+    if (!res.ok) throw new Error("Failed to add trip");
+    return res.json();
+}
+
+export async function updateTrip(id: string, update: TripUpdate): Promise<Trip> {
+    const res = await fetch(`${API_URL}/schedule/trip/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(update)
+    });
+    if (!res.ok) throw new Error("Failed to update trip");
+    return res.json();
+}
+
+export async function getPilots(): Promise<Pilot[]> {
+    const res = await fetch(`${API_URL}/schedule/resources/pilots`);
+    if (!res.ok) throw new Error("Failed to fetch pilots");
+    return res.json();
+}
+
+export async function getTrains(): Promise<TrainSet[]> {
+    const res = await fetch(`${API_URL}/schedule/resources/trains`);
+    if (!res.ok) throw new Error("Failed to fetch trains");
+    return res.json();
+}
+
+export async function publishSchedule(): Promise<{ message: string }> {
+    const res = await fetch(`${API_URL}/schedule/publish`, { method: 'POST' });
+    if (!res.ok) throw new Error("Failed to publish schedule");
+    return res.json();
+}
+
+export async function resetSchedule(): Promise<{ message: string }> {
+    const res = await fetch(`${API_URL}/schedule/reset`, { method: 'POST' });
+    if (!res.ok) throw new Error("Failed to reset schedule");
+    return res.json();
 }

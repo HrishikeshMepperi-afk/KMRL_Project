@@ -13,6 +13,7 @@ class Role(str, Enum):
     MANAGER = "Station Controller"
     SECURITY = "Metro Security"
     TICKET = "Ticket Staff"
+    PILOT = "Metro Pilot"
 
 class ShiftType(str, Enum):
     MORNING = "Morning (06-14)"
@@ -56,6 +57,8 @@ for i in range(1, 51):
     role = Role.SECURITY
     if i % 5 == 0: role = Role.MANAGER
     elif i % 5 == 1: role = Role.TICKET
+    elif i % 5 == 2: role = Role.PILOT
+    elif i % 5 == 3: role = Role.PILOT
     
     mock_staff_db.append(StaffMember(
         id=f"S{i:03d}",
@@ -63,6 +66,9 @@ for i in range(1, 51):
         role=role,
         home_base=random.choice(STATIONS)
     ))
+    
+def get_all_pilots() -> List[StaffMember]:
+    return [s for s in mock_staff_db if s.role == Role.PILOT]
 
 # --- Logic Helpers ---
 
